@@ -1,8 +1,9 @@
 <?php
+require 'PHPMailer/PHPMailerAutoload.php';
+
 echo '<html>';
 $json = file_get_contents('php://input');
 $post_content = json_decode($json);
-//var_dump($post_content);
 if ($post_content->before == $post_content->after)
 {
     echo '<p>invalid request</p>';
@@ -13,14 +14,43 @@ foreach ($post_content->commits as $i)
     if (strpos($i->message , "notification") == null)
     {
         echo '<p>not for notification, skipped.</p>';
-        //ifttt_send_mail($i->url,$post_content->pusher->name);
-    }
-    else
-    {
+    }else{
         echo '<p>sending mail</p>';
-        ifttt_send_mail($i->url,$post_content->pusher->name);
+        send_mail($i->url,$post_content->pusher->name);
     }
 }
+
+function send_mail($mail_commit_url,$mail_pusher)
+{
+    $mail = new PHPMailer;
+    $mail -> setLanguage('zh', '/optional/path/to/language/directory/');
+    $mail -> CharSet = "utf-8";
+    $mail -> isSMTP();
+    $mail -> SMTPDubug = 2;
+    $mail -> Debugoutput = 'html';
+    $mail -> SMTPSecure = 'tls';
+    $mail -> Host = 'smtp.exmail.qq.com';
+    $mail -> Port = 587;
+    $mail -> SMTPAuth = True;
+    require 'smtp_key.php';//include file which contents smtp username and passcode.
+    /*include file which contents smtp username and passcode,write:
+    $mail -> Username = '';
+    $mail -> Password = '';
+    in smtp_key.php*/
+    $mail -> setFrom('i@nyan.im', 'Frank');
+    require 'mail_list.php';//include mail reciver list.
+    $mail -> Subject = '你有一条来自IBM俱乐部的通知';
+    $mail -> Body = date(DATE_RFC2822).'<br />'.$mail_pusher.'通过git push发布了一条通知：<br /><a href="'.$mail_commit_url.'">'.$mail_commit_url.'</a>';
+    $mail->IsHTML(true);
+ 
+    if (!$mail -> send())
+    {
+        echo "Mailer Error: " . $mail->ErrorInfo;
+    }else{
+        echo "mail sent";
+    }
+}
+
 
 function ifttt_send_mail($mail_commit_url,$mail_pusher)
 {
